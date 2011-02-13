@@ -30,17 +30,20 @@
 
 @interface OECoreDownloader : NSWindowController <OEDownloadDelegate>
 {
-    NSMutableArray      *appcasts;
-    NSArray             *urlList;
+    NSButton          *downloadAllCoresButton;
+    NSArrayController *downloadArrayController;
+    NSTableView       *downloadTableView;
     
-    NSMutableDictionary *downloadToPathMap;
-    NSArrayController   *downloadArrayController;
-    NSTableView         *downloadTableView;
+    NSString          *windowTitle;
+    NSString          *downloadAllButtonTitle;
 }
 
+@property(retain) IBOutlet NSButton          *downloadAllCoresButton;
 @property(retain) IBOutlet NSArrayController *downloadArrayController;
 @property(retain) IBOutlet NSTableView       *downloadTableView;
 
-- (void)loadAppcasts;
+- (IBAction)downloadAllCores:(id)sender;
+
+- (id)initWithWindowTitle:(NSString *)wtitle downloadAllButtonTitle:(NSString *)btitle;
 
 @end

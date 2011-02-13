@@ -1,5 +1,5 @@
 /*
- Copyright (c) 2010, OpenEmu Team
+ Copyright (c) 2009, OpenEmu Team
  
  
  Redistribution and use in source and binary forms, with or without
@@ -25,40 +25,8 @@
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #import <Cocoa/Cocoa.h>
-#import "GameCore.h"
+#import "OECoreDownloader.h"
 
-@class OEGameCoreController;
-
-@protocol OEGameCoreHelperDelegate <NSObject>
-- (void) gameCoreDidChangeScreenSizeTo:(OEIntSize)screenSize;
-@end
-
-// our helper app needs to handle these functions
-@protocol OEGameCoreHelper <NSObject>
-
-// control gamecore
-- (oneway void)setVolume:(float)value;
-- (oneway void)setPauseEmulation:(BOOL)flag;
-- (oneway void)player:(NSUInteger)playerNumber didPressButton:(OEButton)button;
-- (oneway void)player:(NSUInteger)playerNumber didReleaseButton:(OEButton)button;
-
-// gamecore attributes
-@property(readonly) OEIntSize   screenSize; // the rect inside the IOSurface which the game is drawing into
-                                            // the rendering filter should resize from this rect into the entire window
-                                            // ignoring aspect ratio
-@property(readonly) OEIntSize   bufferSize; // the size of the IOSurface
-@property(readonly) BOOL isEmulationPaused;
-
-@property(readwrite) NSPoint mousePosition;
-
-@property(readwrite) BOOL drawSquarePixels;
-@property(readonly) IOSurfaceID surfaceID;
-@property(retain) id <OEGameCoreHelperDelegate> delegate;
-
-- (byref GameCore *)gameCore;
-
-- (BOOL)loadRomAtPath:(bycopy NSString *)aPath withCorePluginAtPath:(bycopy NSString *)pluginPath owner:(byref OEGameCoreController *)owner;
-- (void)setupEmulation;
+@interface OECoreUpdater : OECoreDownloader
 @end

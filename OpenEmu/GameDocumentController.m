@@ -40,7 +40,8 @@
 #import "OECorePickerController.h"
 #import "OECompositionPlugin.h"
 #import "OESaveState.h"
-#import "OECoreDownloader.h"
+#import "OECoreInstaller.h"
+#import "OECoreUpdater.h"
 
 #import "OEROMFile.h"
 #import "OEGameQuickLookDocument.h"
@@ -91,8 +92,8 @@
     
     if ( [plugins count] == 0 )
     {
-        coreDownloader = [[OECoreDownloader alloc] init];
-        [coreDownloader showWindow:self];
+        coreInstaller = [[OECoreInstaller alloc] init];
+        [coreInstaller showWindow:self];
     }
     
     
@@ -104,15 +105,8 @@
 
 -(void)updateBundles: (id) sender
 {
-    for(OECorePlugin *plugin in plugins)
-    {
-        //@try {
-        [plugin updateBundle:self];
-        //}
-        //@catch (NSException * e) {
-        //   NSLog(@"Tried to update bundle without sparkle");
-        //}
-    }
+    if (! coreUpdater) coreUpdater = [[OECoreUpdater alloc] init];
+    [coreUpdater showWindow:self];
     
     //see if QC plugins are installed
     NSBundle *OEQCPlugin = [NSBundle bundleWithPath:@"/Library/Graphics/Quartz Composer Plug-Ins/OpenEmuQC.plugin"];
@@ -155,7 +149,7 @@
 		server = [[OENetServer alloc] init];
 		[server setDelegate:self];
 		
-		NSError *error;
+		NSError *error = nil;
 		if(server == nil || ![server start:&error]) {
 			NSLog(@"Failed creating server: %@", error);
 //			[self _showAlert:@"Failed creating server"];
@@ -229,7 +223,8 @@
     [validExtensions release];
     [plugins release];
     [aboutCreditsPath release];
-    [coreDownloader release];
+    [coreInstaller release];
+    [coreUpdater release];
     
     [managedObjectContext release], managedObjectContext = nil;
     [persistentStoreCoordinator release], persistentStoreCoordinator = nil;
@@ -269,15 +264,15 @@
     [saveStateManager showWindow:sender];
 }
 
-- (IBAction)openCoreDownloaderWindow:(id)sender
+- (IBAction)openCoreInstallerWindow:(id)sender
 {
-    if(coreDownloader == nil)
-        coreDownloader = [[OECoreDownloader alloc] init];
+    if(coreInstaller == nil)
+        coreInstaller = [[OECoreInstaller alloc] init];
     
     if([[self currentDocument] isFullScreen])
         [[self currentDocument] toggleFullScreen:sender];
     
-    [coreDownloader showWindow:sender];
+    [coreInstaller showWindow:sender];
 }
 
 - (void)addToVolume:(double)incr

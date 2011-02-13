@@ -30,44 +30,78 @@
 
 @implementation OEDownloadCell
 
-- (void)drawInteriorWithFrame:(NSRect)cellFrame inView:(NSView *)controlView {
-    OEDownload *data               = [self objectValue];
-    BOOL        elementDisabled    = NO;
-    NSColor    *primaryColor       = ([self isHighlighted]
-                                      ? [NSColor alternateSelectedControlTextColor]
-                                      : (elementDisabled
-                                         ? [NSColor disabledControlTextColor]
-                                         : [NSColor textColor]));
-    NSString     *primaryText = [data name];
+- (void)drawInteriorWithFrame:(NSRect)cellFrame inView:(NSView *)controlView
+{
+    OEDownload *download = [self objectValue];
+    BOOL elementDisabled = NO;
+    NSColor *primaryColor = ([self isHighlighted]
+                             ? [NSColor alternateSelectedControlTextColor]
+                             : (elementDisabled
+                                ? [NSColor disabledControlTextColor]
+                                : [NSColor textColor]));
+    
+    NSString *primaryText = [NSString stringWithFormat:@"%@ %@",
+                             download.downloadTitle,
+                             ([download.appcastItem title] ? : @"")];
     
     NSDictionary *primaryTextAttributes = [NSDictionary dictionaryWithObjectsAndKeys:
-                                           primaryColor,                 NSForegroundColorAttributeName,
-                                           [NSFont systemFontOfSize:13], NSFontAttributeName,
+                                           primaryColor                    , NSForegroundColorAttributeName,
+                                           [NSFont boldSystemFontOfSize:13], NSFontAttributeName,
                                            nil];
     
-    [primaryText drawAtPoint:NSMakePoint(cellFrame.origin.x + 32, cellFrame.origin.y + 0)
+    CGFloat secondColumn = cellFrame.origin.x + 80;
+    CGFloat currentLine  = cellFrame.origin.y;
+    
+    [primaryText drawAtPoint:NSMakePoint(secondColumn, currentLine)
               withAttributes:primaryTextAttributes];
     
-    if(![data downloading])
+    currentLine += 20;
+    
+    NSString *secondaryText = [download downloadDescription];
+    if([secondaryText length] > 0)
     {
-        NSButton *button = [data button];
+        NSColor      *secondaryColor          = primaryColor;
+        NSDictionary *secondaryTextAttributes = [NSDictionary dictionaryWithObjectsAndKeys:
+                                                 secondaryColor              , NSForegroundColorAttributeName,
+                                                 [NSFont systemFontOfSize:11], NSFontAttributeName,
+                                                 nil];
         
+        [secondaryText drawAtPoint:NSMakePoint(secondColumn, currentLine)
+                    withAttributes:secondaryTextAttributes];
+    }
+    
+    currentLine += 20;
+    
+    if(![download isDownloading])
+    {
+        NSButton *button = download.startDownloadButton;
         [controlView addSubview:button];
-        [button setFrame:NSMakeRect(cellFrame.origin.x + 14,
-                                    cellFrame.origin.y + cellFrame.size.height / 2 - 7,
-                                    14, 14)];
+        [button setFrame:NSMakeRect(secondColumn, currentLine, 14, 14)];
     }
     else
     {
-        [[data button] removeFromSuperview];
-        NSProgressIndicator *progressIndicator = [data progressBar];
+        [download.startDownloadButton removeFromSuperview];
         
+        NSProgressIndicator *progressIndicator = download.progressBar;
         [controlView addSubview:progressIndicator];
         [progressIndicator setFocusRingType:NSFocusRingTypeNone];
-        
-        [progressIndicator setFrame:NSMakeRect(cellFrame.origin.x + 32,
-                                               cellFrame.origin.y + cellFrame.size.height / 2,
-                                               cellFrame.size.width - 48, NSProgressIndicatorPreferredThickness)];
+        [progressIndicator setFrame:NSMakeRect(secondColumn,
+                                               currentLine,
+                                               cellFrame.size.width - 88,
+                                               NSProgressIndicatorPreferredThickness)];
+    }
+    
+    NSImage *icon = [[download downloadIcon] copy];
+    
+    if(icon != nil)
+    {
+        [icon setSize:NSMakeSize(64, 64)];
+        [icon setFlipped:YES];
+        [icon drawAtPoint:NSMakePoint(cellFrame.origin.x + 4, cellFrame.origin.y + cellFrame.size.height / 2 - 32)
+                 fromRect:NSMakeRect(0, 0, 64, 64)
+                operation:NSCompositeSourceOver
+                 fraction:1.0f];
+        [icon release];
     }
 }
 

@@ -33,118 +33,85 @@
 
 @implementation OECoreDownloader
 
-@synthesize downloadArrayController, downloadTableView;
+@synthesize downloadAllCoresButton, downloadArrayController, downloadTableView;
 
-- (id)init
-{
-    return [self initWithWindowNibName:@"CoreDownloader"];
-}
+#pragma mark Lifecycle
 
-- (id)initWithWindowNibName:(NSString *)windowNibName
+- (id)initWithWindowTitle:(NSString *)wtitle downloadAllButtonTitle:(NSString *)btitle
 {
-    self = [super initWithWindowNibName:windowNibName];
-    if(self != nil)
+    if((self = [self initWithWindowNibName:@"CoreDownloader"]))
     {
-        // FIXME: Never used, what's the point ?
-        NSError *error = nil;
-        
-        // Get the URL for the list of available plugins
-        NSString *coreURLs = [[[NSBundle mainBundle] infoDictionary] valueForKey:@"OECoreListURL"];
-        NSString *rawList  = [NSString stringWithContentsOfURL:[NSURL URLWithString:coreURLs] encoding:NSUTF8StringEncoding error:&error];
-        
-        NSArray *list = [rawList componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]];
-        
-        NSMutableArray *tempURLList = [NSMutableArray array];
-        
-        NSArray *allPlugins = [OECorePlugin allPlugins];
-        
-        // Load the appcast for each core
-        for(NSString *appcastString in list)
-        {
-            BOOL pluginExists = NO;
-            NSURL *appcastURL = [NSURL URLWithString:appcastString];
-            
-            // Check if the core is already installed by checking against the appcast URL
-            for(OECorePlugin* plugin in allPlugins)
-            {
-                if([[[plugin bundle] infoDictionary] valueForKey:@"SUFeedURL"])
-                {
-                    SUUpdater* updater = [SUUpdater updaterForBundle:[plugin bundle]];
-                    if ([[updater feedURL] isEqual:appcastURL])
-                    {
-                        pluginExists = YES;
-                        break;
-                    }
-                }    
-            }
-            
-            if(!pluginExists) [tempURLList addObject:appcastURL];
-        }
-        
-        urlList = [tempURLList copy];
+        windowTitle = [wtitle copy];
+        downloadAllButtonTitle = [btitle copy];
     }
     return self;
 }
 
-- (void)windowDidLoad
+- (id)init
 {
-    [self loadAppcasts];
+    return [self initWithWindowTitle:@"" downloadAllButtonTitle:@"Download All Cores"];
 }
 
 - (void)dealloc
 {
+    [downloadAllCoresButton release];
     [downloadArrayController release];
-    [downloadTableView       release];
-    [downloadToPathMap       release];
-    [appcasts                release];
-    [urlList                 release];
-    [super                   dealloc];
+    [downloadTableView release];
+    
+    [windowTitle release];
+    [downloadAllButtonTitle release];
+    
+    [super dealloc];
 }
 
-- (void)loadAppcasts
+- (void)windowDidLoad
 {
-    // Fetch all the appcasts
-    for(NSURL *appcastURL in urlList)
-    {
-        SUAppcast *appcast = [[SUAppcast alloc] init];
-        
-        [appcast setDelegate:self];
-        [appcast fetchAppcastFromURL:appcastURL];
-        
-        [appcasts addObject:appcast];
-        [appcast release];
-    }
+    [[self window] setTitle:windowTitle];
+    [downloadAllCoresButton setTitle:downloadAllButtonTitle];
+    NSSortDescriptor *nameSortDescriptor = [[[NSSortDescriptor alloc] initWithKey:@"downloadTitle"
+                                                                        ascending:YES
+                                                                         selector:@selector(localizedCaseInsensitiveCompare:)]
+                                            autorelease];
+    NSArray *sortDescriptors = [NSArray arrayWithObject:nameSortDescriptor];
+    [downloadArrayController setSortDescriptors:sortDescriptors];
 }
 
-- (void)appcastDidFinishLoading:(SUAppcast *)appcast
-{
-    OEDownload *download = [[[OEDownload alloc] initWithAppcast:appcast] autorelease];
-    [download setDelegate:self];
-    [downloadArrayController addObject:download];
-}
-
-- (void)appcast:(SUAppcast *)appcast failedToLoadWithError:(NSError *)error
-{
-    // Appcast couldn't load, remove it
-    [appcasts removeObject:appcast];
-}
-
-- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
-{
-    if([keyPath isEqualToString:@"progress"])
-        [downloadTableView setNeedsDisplay];
-}
-
-- (void)OEDownloadDidFinish:(OEDownload *)download;
+- (void)OEDownloadDidStart:(OEDownload *)download
 {
     [downloadTableView setNeedsDisplay];
-    [[GameDocumentController sharedDocumentController] openDocumentWithContentsOfURL:[NSURL fileURLWithPath:[download fullPluginPath]] display:NO error:nil];
-    [downloadArrayController removeObject:download];
+    
+    BOOL allDownloading = YES;
+    for(OEDownload *download in [downloadArrayController arrangedObjects])
+    {
+        if(![download isDownloading])
+        {
+            allDownloading = NO;
+            break;
+        }
+    }
+    
+    [downloadAllCoresButton setEnabled:!allDownloading];
 }
 
-- (IBAction)openCoreDownloaderWindow:(id)sender
+- (void)OEDownloadDidFinish:(OEDownload *)download
 {
-    [self close];
+    [[GameDocumentController sharedDocumentController] openDocumentWithContentsOfURL:[NSURL fileURLWithPath:[download fullPluginPath]] display:NO error:nil];
+    [downloadArrayController removeObject:download];
+    [downloadTableView setNeedsDisplay];
+    if([[downloadArrayController arrangedObjects] count] == 0)
+        [downloadAllCoresButton setEnabled:NO];
+}
+
+- (void)OEIconDownloadDidFinish:(OEDownload *)download
+{
+    [downloadTableView setNeedsDisplay];
+}
+
+- (IBAction)downloadAllCores:(id)sender
+{
+    for(OEDownload *download in [downloadArrayController arrangedObjects])
+        if([download isEnabled] && ![download isDownloading])
+            [download startDownload:self];
 }
 
 @end

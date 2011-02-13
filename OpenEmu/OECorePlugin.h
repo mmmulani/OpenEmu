@@ -63,7 +63,3 @@
 - (NSArray *)typesPropertyList;
 
 @end
-
-@interface OECorePlugin (SUUpdater)
-- (void)updateBundle:(id)sender;
-@end

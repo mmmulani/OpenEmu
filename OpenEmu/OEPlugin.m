@@ -27,6 +27,7 @@
 
 #import "OEPlugin.h"
 
+
 @implementation NSObject (OEPlugin)
 + (BOOL)isPluginClass
 {
@@ -201,7 +202,10 @@ NSInteger OE_compare(OEPlugin *obj1, OEPlugin *obj2, void *ctx)
                 NSArray  *subpaths = [manager contentsOfDirectoryAtPath:subpath error:NULL];
                 for(NSString *bundlePath in subpaths)
                     if([extension isEqualToString:[bundlePath pathExtension]])
-                        [self pluginWithBundleAtPath:[subpath stringByAppendingPathComponent:bundlePath] type:aType];
+                        // If a plugin fails to load, another plugin with the same name in deeper paths can take its spot
+                        // Typical case: an old-style plugin in ~/Library should fail to load,
+                        // and its new-style counter-part in /Library will take its place and load properly
+                        [self pluginWithBundleAtPath:[subpath stringByAppendingPathComponent:bundlePath] type:aType forceReload:YES];
             }
             
             paths = [[NSBundle mainBundle] pathsForResourcesOfType:extension inDirectory:folder];
@@ -246,15 +250,24 @@ NSInteger OE_compare(OEPlugin *obj1, OEPlugin *obj2, void *ctx)
     NSString *aName = [[bundlePath stringByDeletingPathExtension] lastPathComponent];
     id ret = [plugins objectForKey:aName];
     
-    if(reload && ret != nil) return nil;
+    if(reload)
+    {
+        // Will override a previous failed attempt at loading a plugin
+        if(ret == [NSNull null]) ret = nil;
+        // A plugin was already successfully loaded
+        else if(ret != nil) return nil;
+    }
     
+    // No plugin with such name, attempt to actually load the file at the given path
     if(ret == nil)
     {
         [aType willChangeValueForKey:@"allPlugins"];
         NSBundle *theBundle = [NSBundle bundleWithPath:bundlePath];
         if(bundlePath != nil && theBundle != nil)
             ret = [[[aType alloc] initWithBundle:theBundle] autorelease];
-        else ret = [NSNull null];
+        
+        // If ret is still nil at this point, it means the plugin can't be loaded (old-style version for example)
+        if(ret == nil) ret = [NSNull null];
         
         [plugins setObject:ret forKey:aName];
         [aType didChangeValueForKey:@"allPlugins"];
